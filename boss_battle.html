@@ -1,0 +1,309 @@
+<!DOCTYPE HTML>
+<html lang="en-US">
+<head>
+<meta charset="UTF-8">
+<title>Galaxy Defense</title>
+<style type="text/css">
+    #instructions{
+        position: absolute;
+        left: 600px;
+        top: 825px;
+        color: darkgreen;
+    }
+    #scoreboard{
+        position: absolute;
+        left: 825px;
+        top: 40px;
+    }
+    #lives{
+        position: absolute;
+        left: 700px;
+        top: 650px;
+        color: #dce1e4;
+        z-index: 999;
+    }
+    #energyBank{
+        position: absolute;
+        left: 500px;
+        top: 650px;
+        color: #dce1e4;
+        z-index: 999;
+    }
+    #passed{
+        position: absolute;
+        left: 900px;
+        top: 650px;
+        color: #dce1e4;
+        z-index: 999;
+    }
+    h1{
+        position: absolute;
+        left: 700px;
+    }
+    #logo{
+        position: absolute;
+        left: 500px;
+    }
+</style>
+<script type = "text/javascript"
+        src = "simpleGame.js"></script>
+<script type="text/javascript"
+        src="bullets.js"></script>
+<script type="text/javascript"
+        src="ships.js"></script>
+<script type="text/javascript">
+//main elements
+var player;
+var scene;
+var enemies;
+var exlives = 100;
+var currentBullet = 0;
+var currentBulletE = 0;
+var delay = .25;
+var score = 0;
+var energy = 75;
+var passed = 0;
+var slain = 0;
+
+//sounds
+var shot = [];
+var shotE = [];
+var hurt;
+var dead;
+var failure;
+var alarm;
+//constants
+var NUM_BULLETS = 100;
+var NUM_ENEMIES = 6;
+var SPEED = 0;
+var NORMAL = 1;
+var SLOW = 2;
+
+function PowerUp(image){
+    tPower = new Sprite(scene, image, 25, 25);
+    tPower.hide();
+    tPower.setMoveAngle(180);
+    tPower.setSpeed(3);
+
+    tPower.reset = function () {
+        x = (Math.random() * scene.width);
+        this.setPosition(x, 10);
+        this.setSpeed(3);
+        this.show();
+    }
+    tPower.checkTimer = function(showPerc){
+        //determine if powerup should popup
+        if (this.visible != true) {
+            randVal = Math.random();
+            if (randVal < showPerc) {
+                this.reset();
+            }//end if
+
+        }//end if
+    }//end function checkTime
+
+    tPower.checkBounds = function(){
+        if (this.y >700){
+            this.setSpeed(0);
+            this.hide();
+        }//end if
+    }//end checkBounds
+
+    return tPower;
+}//end PowerUp
+
+function checkCollisions(){
+    scores.innerHTML = "Score: " + score;
+    lives.innerHTML = "Shields: " + exlives + "%";
+    passing.innerHTML = "Enemies passed: " + passed + "/5";
+    battery.innerHTML = "Energy: " + energy;
+    if (player.collidesWith(boss.bullets)){
+        boss.bullets.hide();
+        exlives -= 25;
+        if(exlives > 0){
+            hurt.play();
+        }
+    }//end if
+
+    if (player.collidesWith(boss.bulletsL)){
+        boss.bulletsL.hide();
+        exlives -= 25;
+        if(exlives > 0){
+            hurt.play();
+        }
+    }//end if
+
+    if (player.collidesWith(boss.bulletsR)){
+        boss.bulletsR.hide();
+        exlives -= 25;
+        if(exlives > 0){
+            hurt.play();
+        }
+    }//end if
+
+    for (i = 0; i < NUM_BULLETS; i++) {
+        if (bulletsP[i].collidesWith(boss)) {
+            if (boss.leftWing.visible != true) {
+                if (boss.rightWing.visible != true) {
+                    energy += 5;
+                    bulletsP[i].hide();
+                    boss.health--;
+                    if (boss.health <= 0) {
+                        boss.hide();
+                        boss.leftWing.hide();
+                        boss.rightWing.hide();
+                        alert("VICTORY!!!");
+                        alert("Congratulations!\nYou defeated all of them.\nThe universe is safe once more.");
+                        document.location.href = "galacticattempt.html";
+                    }//end if
+                }//end for
+            }
+        }
+    }//end for
+
+    for (i = 0; i < NUM_BULLETS; i++) {
+        if (bulletsP[i].collidesWith(boss.leftWing)) {
+            energy += 5;
+            bulletsP[i].hide();
+            boss.leftWing.health--;
+            if (boss.leftWing.health <= 0){
+                boss.leftWing.hide();
+            }//end if
+        }//end for
+    }//end for
+
+    for (i = 0; i < NUM_BULLETS; i++) {
+        if (bulletsP[i].collidesWith(boss.rightWing)) {
+            energy += 5;
+            bulletsP[i].hide();
+            boss.rightWing.health--;
+            if (boss.health <= 0){
+                boss.rightWing.hide();
+            }//end if
+        }//end for
+    }//end for
+
+    if (player.collidesWith(extlife)){
+        exlives += 25;
+        extlife.hide();
+        if(exlives > 200){
+            exlives = 200;
+        }
+    }//end if
+    if (player.collidesWith(maxEng)){
+        energy += 100;
+        maxEng.hide();
+    }//end if
+
+
+    if (energy < 25){
+        alarm.play();
+        if (timerA.getElapsedTime() < 1) {
+            battery.style.color = "red";
+        }else if (timerA.getElapsedTime() > 1 && timerA.getElapsedTime() < 1.5){
+            battery.style.color = "#dce1e4";
+        }else if (timerA.getElapsedTime() > 1.5){
+            timerA.reset();
+        }//end if
+    }else{
+        battery.style.color = "#dce1e4";
+        timerA.reset();
+    }//end energy low if
+
+    if (exlives < 0) {
+        bgm.pause();
+        dead.play();
+        alert("You are dead. Not big surprise.");
+        document.location.href = "galacticattempt.html";
+    }//end lives if
+
+    if (passed>=5){
+        bgm.pause();
+        failure.play();
+        alert("You let too may pass!\nThe goal was to NOT let them pass!\n Now everyone is dead.\nFinal score:" + score + "\nYou slew " + slain + " aliens.");
+        document.location.href = "galacticattempt.html";
+    }//end passed if
+
+    if (energy <= 0){
+        bgm.pause();
+        failure.play();
+        alert("You ran out of energy...\nThe universe is doomed...");
+        document.location.href = "galacticattempt.html";
+    }//end energy if
+
+}//end checkCollisions
+
+function makeSounds(){
+    for (i = 0; i < NUM_BULLETS; i++) {
+        shot[i] = new Sound("LASER_SH.mp3");
+        shotE[i] = new Sound("PHASER1.mp3");
+    }//end for
+    dead = new Sound("heavy_domination17.mp3")
+    failure = new Sound("your_team_lost.mp3");
+    alarm = new Sound("mvm_bomb_warning.mp3");
+
+    hurt = new Sound("explode_1.mp3");
+
+}//end makeSounds
+
+function init(){
+    scene = new Scene();
+    scene.setBG("Black");
+    scene.hideCursor();
+    scene.setPos(400, 200);
+    background = new Sprite(scene, "background.png", 800, 600);
+    background.setPosition(400, 300);
+    background.setSpeed(0);
+    player = new Plane();
+    boss = new Boss();
+    extlife = new PowerUp("pwrup.png");
+    maxEng = new PowerUp("maxEng.png");
+    makeBullets();
+    makeSounds();
+    scores = document.getElementById("scoreboard")
+    lives = document.getElementById("lives");
+    battery = document.getElementById("energyBank");
+    passing = document.getElementById("passed");
+    bgm = document.getElementById("bgm");
+    timerP = new Timer();
+    timerA = new Timer();
+    timerE = new Timer();
+    timerEL = new Timer();
+    timerER = new Timer();
+    alert("BOSS INCOMING!!!");
+    alert("The mothership is radiating enough energy to overcharge your vessel!\nEnergy and shields capacitors now hold double their original amount!");
+    scene.start();
+}//end init
+
+
+function update(){
+    scene.clear();
+    background.update();
+    player.followMouse();
+    player.checkKeys(200);
+
+    checkCollisions();
+    extlife.checkTimer(.0025);
+    maxEng.checkTimer(.002);
+    boss.autoFire();
+
+    maxEng.update();
+    extlife.update();
+    player.update();
+    boss.update();
+    updateBullets();
+}//end update
+</script>
+</head>
+
+<body onload="init()">
+<img src="logo.png" id="logo">
+<div id="instructions">Use the mouse to move the ship. C to fire. V to unleash a temporal freeze at 75 energy!</div>
+<div id="lives">Extra lives remaining:</div>
+<div id="scoreboard">score</div>
+<div id="energyBank"> Energy: 50</div>
+<div id="passed">Passed 0/5</div>
+<audio src="bossbgm.mp3" autoplay="autoplay" loop="loop" id="bgm"></audio>
+
+</body>
+</html>
